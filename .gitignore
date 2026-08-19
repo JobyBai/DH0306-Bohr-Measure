@@ -1,0 +1,28 @@
+# 编译输出
+Debug/
+Release/
+build/
+
+# STM32CubeIDE
+.settings/
+.project
+.cproject
+
+# Keil
+*.uvguix.*
+*.uvoptx
+*.uvprojx
+
+# 编译文件
+*.o
+*.d
+*.elf
+*.axf
+*.hex
+*.bin
+*.map
+
+# 临时文件
+*.log
+*.tmp
+*.bak

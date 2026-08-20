@@ -29,6 +29,7 @@
 /* USER CODE BEGIN Includes */
 #include "sine_analyzer.h"
 #include "drv_can.h"
+#include "control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,7 +52,7 @@
 /* USER CODE BEGIN PV */
 // 1. 定义 DMA 目标数组 (必须放在全局或静态区，确保地址稳定)
 __attribute__((aligned(4))) uint16_t adc_buf[SA_ADC_BUF_SIZE];
-SineWaveResult_t result;
+SineWaveResult_t analyzer_result;
 
 
 
@@ -108,6 +109,8 @@ int main(void)
   MX_TIM3_Init();
   MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
+  // 初始化控制模块
+  Control_Init();
   FDCAN1_StartAndConfig();//开启过滤器
 
   // 初始化正弦波分析模块
@@ -132,6 +135,9 @@ int main(void)
 				   3724);
   //开启编码器模式
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
+
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -142,8 +148,9 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     SineAnalyzer_Process(); // 处理数据
-    SineAnalyzer_GetResult(&result); // 获取结果
+    SineAnalyzer_GetResult(&analyzer_result); // 获取结果
     count = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+    DRV_CAN_ProcessData(); // 处理CAN数据
   }
   /* USER CODE END 3 */
 }

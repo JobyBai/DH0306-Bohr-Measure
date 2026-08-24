@@ -267,7 +267,7 @@ void TIM1_CC_IRQHandler(void)
   /* USER CODE END TIM1_CC_IRQn 0 */
   HAL_TIM_IRQHandler(&htim1);
   /* USER CODE BEGIN TIM1_CC_IRQn 1 */
-  SineAnalyzer_TIM_IC_Callback(&htim1);
+  // SineAnalyzer_TIM_IC_Callback(&htim1);
   /* USER CODE END TIM1_CC_IRQn 1 */
 }
 

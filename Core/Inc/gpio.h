@@ -33,7 +33,7 @@ extern "C" {
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
-
+extern int16_t first_code_num;
 /* USER CODE END Private defines */
 
 void MX_GPIO_Init(void);

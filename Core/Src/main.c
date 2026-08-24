@@ -58,7 +58,7 @@ SineWaveResult_t analyzer_result;
 
 //  定义一个标志位，用于指示数据是否已更新 (可选，用于中断回调方式)
 volatile uint8_t data_ready_flag = 0;
-int16_t count;
+uint16_t count;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -149,7 +149,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
     SineAnalyzer_Process(); // 处理数据
     SineAnalyzer_GetResult(&analyzer_result); // 获取结果
-    count = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+    count = (uint16_t)__HAL_TIM_GET_COUNTER(&htim3);
     DRV_CAN_ProcessData(); // 处理CAN数据
   }
   /* USER CODE END 3 */

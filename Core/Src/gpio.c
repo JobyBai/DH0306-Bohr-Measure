@@ -73,11 +73,20 @@ void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 2 */
 // 外理PA5引脚的外部中断
+uint16_t code_num = 0;
+uint8_t is_first_edge = 1;
+int16_t first_code_num = 0;// 第一次触发的计数器值
 // 当PA5引脚从低电平变高电平时，重置定时器3的计数器
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if (GPIO_Pin == GPIO_PIN_5)
     {
+      code_num = (uint16_t)__HAL_TIM_GET_COUNTER(&htim3);
+    	if (is_first_edge)// 第一次触发，直接返回
+    	{
+    		is_first_edge = 0;
+    		first_code_num = -code_num;
+    	}
         __HAL_TIM_SET_COUNTER(&htim3, 0);
     }
 }

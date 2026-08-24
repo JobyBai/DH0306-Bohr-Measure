@@ -31,6 +31,8 @@ typedef struct {
     float dc_offset_v;     /**< 直流偏置电压 (V)，即信号平均值 */
     float vpp_v;           /**< 峰峰值电压 (V) */
     uint8_t is_valid;      /**< 数据有效标志: 1=已计算出有效数据, 0=初始化或无效 */
+    float phase_diff_1;  /**< 相位差1 */
+    float phase_diff_2;  /**< 相位差2 */
 } SineWaveResult_t;
 
 /* Exported constants --------------------------------------------------------*/
@@ -82,6 +84,8 @@ void SineAnalyzer_GetResult(SineWaveResult_t *result);
   * @retval None
   */
 void SineAnalyzer_TIM_IC_Callback(TIM_HandleTypeDef *htim);
+
+int16_t Encoder_Delta(int16_t x, int16_t x0);
 
 #ifdef __cplusplus
 }

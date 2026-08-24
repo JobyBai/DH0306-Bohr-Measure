@@ -14,8 +14,13 @@
 #include "sine_analyzer.h"
 #include <string.h> // 用于 memcpy
 #include <math.h>   // 用于数学运算
+#include "tim.h"
+#include "gpio.h"
 
 /* Private variables ---------------------------------------------------------*/
+
+uint16_t  rising_edge_count = 0;// 上升沿计数
+uint16_t  falling_edge_count = 0;// 下降沿计数
 
 // 模块内部持有的硬件句柄指针
 static TIM_HandleTypeDef *s_htim_ic = NULL;
@@ -122,7 +127,9 @@ void SineAnalyzer_Process(void)
         // 3. 对重组后的连续数据进行计算
         Calculate_Params(temp_buf, half_period_points);
     }
-    
+    // 计算相位差
+    s_result.phase_diff_1 = Encoder_Delta(rising_edge_count, first_code_num) / s_result.period_sec;
+    s_result.phase_diff_2 = Encoder_Delta(falling_edge_count - 2000,  first_code_num) / s_result.period_sec;
     // 标记结果有效
     s_result.is_valid = 1;
 }
@@ -130,54 +137,67 @@ void SineAnalyzer_Process(void)
 /**
   * @brief TIM 捕获中断回调入口
   */
-void SineAnalyzer_TIM_IC_Callback(TIM_HandleTypeDef *htim)
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
     // 验证是否是我们要处理的定时器和通道 (TIM1 CH2)
-//    if (htim->Instance == s_htim_ic->Instance && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
-	if (htim->Instance == s_htim_ic->Instance)
+   if (htim->Instance == s_htim_ic->Instance && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
+	// if (htim->Instance == s_htim_ic->Instance)
     {
         // 1. 读取当前捕获值 (计数器值)
         uint16_t current_cap = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);
         
-        // --- 频率计算部分 ---
-        static uint16_t last_cap = 0;
-        static uint8_t first_run = 1;
-        
-        if (!first_run)
+        // 获取IO引脚状态，判断是否为上升沿或下降沿
+        GPIO_PinState pin_state = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9);
+        // 上升沿
+        if (pin_state == GPIO_PIN_SET)
         {
-            // 计算两次上升沿的 Tick 差值
-            uint16_t delta = current_cap - last_cap;
+            rising_edge_count = (uint16_t)__HAL_TIM_GET_COUNTER(&htim3);// 记录上升沿的计数器值
+            // --- 频率计算部分 ---
+            static uint16_t last_cap = 0;
+            static uint8_t first_run = 1;
             
-            // 处理 16 位计数器自然溢出 (虽然 PSC 很大，但保留此逻辑以防万一)
-            if (current_cap < last_cap) 
+            if (!first_run)
             {
-                delta += 65536; 
+                // 计算两次上升沿的 Tick 差值
+                uint16_t delta = current_cap - last_cap;
+                
+                // 处理 16 位计数器自然溢出 (虽然 PSC 很大，但保留此逻辑以防万一)
+                if (current_cap < last_cap) 
+                {
+                    delta += 65536; 
+                }
+                
+                // 转换为时间: PSC=16999 -> 1 Tick = 0.1 ms
+                float period_ms = (float)delta * 0.1f;
+                
+                if (period_ms > 0)
+                {
+                    s_result.period_sec = period_ms / 1000.0f;
+                    s_result.frequency_hz = 1000.0f / period_ms;
+                }
             }
-            
-            // 转换为时间: PSC=16999 -> 1 Tick = 0.1 ms
-            float period_ms = (float)delta * 0.1f;
-            
-            if (period_ms > 0)
+            else
             {
-                s_result.period_sec = period_ms / 1000.0f;
-                s_result.frequency_hz = 1000.0f / period_ms;
+                first_run = 0; // 第一次捕获只记录基准，不计算
             }
-        }
+            last_cap = current_cap;
+            
+            // --- 数据同步部分 ---
+            // 获取 DMA 剩余传输计数
+            uint32_t ndtr = __HAL_DMA_GET_COUNTER(s_hdma);
+            
+            // 计算当前 DMA 正在写入的索引: Total - Remaining
+            s_last_dma_pos = SA_ADC_BUF_SIZE - ndtr;
+            
+            // 通知主循环有新数据
+            s_new_data_ready = 1;
+            }
         else
         {
-            first_run = 0; // 第一次捕获只记录基准，不计算
+            // 下降沿
+            falling_edge_count = (uint16_t)__HAL_TIM_GET_COUNTER(&htim3);// 记录下降沿的计数器值
         }
-        last_cap = current_cap;
         
-        // --- 数据同步部分 ---
-        // 获取 DMA 剩余传输计数
-        uint32_t ndtr = __HAL_DMA_GET_COUNTER(s_hdma);
-        
-        // 计算当前 DMA 正在写入的索引: Total - Remaining
-        s_last_dma_pos = SA_ADC_BUF_SIZE - ndtr;
-        
-        // 通知主循环有新数据
-        s_new_data_ready = 1;
     }
 }
 
@@ -214,4 +234,20 @@ static void Calculate_Params(uint16_t *data_ptr, uint16_t len)
     
     // 振幅 = Vpp / 2
     s_result.amplitude_v = s_result.vpp_v / 2.0f;
+}
+
+
+/**
+ * @brief 计算编码器相对初始位置的脉冲增量
+ * @param x      当前编码值 [0, 3999]
+ * @param x0     初始编码值 [0, 3999]
+ * @return       有向脉冲增量 [-2000, +1999]
+ */
+int16_t Encoder_Delta(int16_t x, int16_t x0)
+{
+    const int16_t PPR = 4000;
+    const int16_t HALF = PPR / 2;  // 2000
+    
+    int16_t diff = ((x - x0 + HALF) % PPR + PPR) % PPR - HALF;  
+    return diff;
 }

@@ -85,7 +85,7 @@ void SineAnalyzer_GetResult(SineWaveResult_t *result);
   */
 void SineAnalyzer_TIM_IC_Callback(TIM_HandleTypeDef *htim);
 
-int16_t Encoder_Delta(int16_t x, int16_t x0);
+float Encoder_Delta(int16_t x, int16_t x0);
 
 #ifdef __cplusplus
 }

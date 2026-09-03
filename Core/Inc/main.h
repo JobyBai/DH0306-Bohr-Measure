@@ -46,7 +46,7 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
+extern uint16_t adc_buf[SA_ADC_BUF_SIZE];
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/

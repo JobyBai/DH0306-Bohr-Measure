@@ -149,6 +149,7 @@ int main(void)
     SineAnalyzer_Process(); // 处理数据
     SineAnalyzer_GetResult(&analyzer_result); // 获取结果
     DRV_CAN_ProcessData(); // 处理CAN数据
+    ADC_Stream_Forward(); // 转发ADC数据
   }
   /* USER CODE END 3 */
 }
